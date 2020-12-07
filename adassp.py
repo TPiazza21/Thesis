@@ -30,6 +30,7 @@ def adaSSP(X,y,epsilon,delta,gamma):
 
     lamb_min = lambda_min_true + np.random.normal(0., 1., 1)*BX*BX*np.sqrt(logsod_hyper)/(epsilon_hyper) - logsod_hyper/(epsilon_hyper)
     lamb_min = max(lamb_min, 0.)
+    lamb = max(0.0, eta - lamb_min)
 
 
     # then handle the "necessary" parts of linear regression
@@ -42,12 +43,13 @@ def adaSSP(X,y,epsilon,delta,gamma):
     # for X^TX
     normal_mat = np.random.normal(0.0,1.0,(d,d))
 
-    # I should look at the coefficients of this thing!
+    # I should look at the coefficients of this thing! beware scalars along diagonal
     symmetric_normal_mat = 0.5 * (normal_mat + normal_mat.T)
     XTX_hat = XTX + (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BX*symmetric_normal_mat
 
     # the new version of (X^TX + lambda*I)^{-1}(X^Ty)
-    theta_hat = np.linalg.inv(XTX_hat + lamb_min * np.eye(d)).dot(XTy_hat)
+    # you previously made a mistake where lamb was mistakenly put as lamb_min
+    theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
 
     return theta_hat
 
@@ -57,3 +59,13 @@ def adaSSP_1_3(X,y,epsilon, delta):
 
 def adaSSP_2_3(X,y,epsilon, delta):
     return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=2.0/3.0)
+
+def adaSSP_1_6(X,y,epsilon, delta):
+    return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=1.0/6.0)
+
+def adaSSP_1_100(X,y,epsilon, delta):
+    return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=1.0/100.0)
+
+def adaSSP_5_6(X,y,epsilon, delta):
+    return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=5.0/6.0)
+

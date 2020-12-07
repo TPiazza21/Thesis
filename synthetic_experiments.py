@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # methods
 from SSP import SSP
 from linreg import linreg
-from adassp import adaSSP, adaSSP_1_3, adaSSP_2_3
+from adassp import adaSSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6
 
 from test_recovery import test_recovery
 
@@ -21,9 +21,9 @@ from test_recovery import test_recovery
 
 
 d = 10
-epslist = [0.01,0.1,1]
+epslist = [0.1,1]
 #nlist= 20*2.^[1:2:18];
-nlist = [20 * (2 ** i) for i in range(1,17,2)] # smaller n go faster
+nlist = [20 * (2 ** i) for i in range(1,18,2)] # smaller n go faster
 
 cross_val_splits = 6
 
@@ -31,9 +31,10 @@ cross_val_splits = 6
 
 #methodslist = [@suffstats_perturb,@adassp, @budget_adassp_1_6, @budget_adassp_1_3,...
     #@budget_adassp_1_2, @budget_adassp_2_3, @budget_adassp_5_6, @budget_adassp_1_100]
-methodsNamelist = ['Non-Private', 'SSP', 'Budget AdaSSP 1/3', 'Budget AdaSSP 2/3'] #, 'Budget AdaSSP 1/6', 'Budget AdaSSP 1/3', 'Budget AdaSSP 1/2',
+methodsNamelist = ['Non-Private', 'SSP', 'Budget AdaSSP 1/3 (original)', 'Budget AdaSSP 2/3',
+'Budget AdaSSP 1/100', 'Budget AdaSSP 1/6', 'Budget AdaSSP 5/6'] #, 'Budget AdaSSP 1/6', 'Budget AdaSSP 1/3', 'Budget AdaSSP 1/2',
 #'Budget AdaSSP 2/3', 'Budget AdaSSP 5/6', 'Budget AdaSSP 1/100']
-methodslist = [linreg, SSP, adaSSP_1_3, adaSSP_2_3]
+methodslist = [linreg, SSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6]
 
 vanilla_index = methodsNamelist.index('Non-Private')
 if vanilla_index < 0:
@@ -81,6 +82,7 @@ for i in range(num_n):
     for j in range(num_eps):
     #% set parameters of the algorithm
         eps = epslist[j]
+        print(f"eps is {eps:.4f}")
         #opts.eps = epslist(j);
         #opts.delta =1/n^(1.1);
         delta = 1 / (n ** (1.1)) # not so sure what this is about
@@ -92,7 +94,7 @@ for i in range(num_n):
             assert(not np.isnan(cvErr))
             #t_run=toc; # this is for timing, which I am not keeping track of
             t_run = time.time() - t
-            print(f"Time run was {t_run:.4f}s")
+            print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
             #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
             results_err[k,j,i] = cvErr
             results_std[k,j,i] = cvStd
@@ -105,12 +107,16 @@ for i in range(num_n):
 # divide everything by the error for the vanilla linear regression
 
 rel_efficiency = np.zeros((num_method, num_eps, num_n))
+rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
 vanilla_values = results_err[vanilla_index,:,:]
+
 
 for i in range(num_n):
     for j in range(num_eps):
         for k in range(num_method):
             rel_efficiency[k,j,i] = results_err[k,j,i] / vanilla_values[j,i]
+            rel_efficiency_std[k,j,i] = results_std[k,j,i] / vanilla_values[j,i]
+
 
 # then for the plotting
 # right now, it's one plot per epsilon
@@ -121,7 +127,11 @@ for j in range(num_eps):
     eps = epslist[j]
 
     for k in range(num_method):
-        ax.errorbar(x=nlist, y=rel_efficiency[k,j,:], yerr=results_std[k,j,:], label=methodsNamelist[k])
+
+        #print("yerr is ")
+        #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
+
+        ax.errorbar(x=nlist, y=rel_efficiency[k,j,:], yerr=np.concatenate(    (np.zeros((num_n, 1)), rel_efficiency_std[k,j,:].reshape((num_n,1))),    axis=1).transpose(), label=methodsNamelist[k])
 
     ax.set_xlabel("n values (size of data set)")
     ax.set_ylabel('Relative Efficiency')
@@ -133,13 +143,15 @@ for j in range(num_eps):
 
 
 # and if we don't divide the values
+# you should get rid of this at some point, this doesn't say much
+"""
 for j in range(num_eps):
     fig, ax = plt.subplots(1) # just one, for now
     eps = epslist[j]
 
     for k in range(num_method):
 
-        ax.errorbar(x=nlist, y=results_err[k,j,:], yerr=results_std[k,j,:], label=methodsNamelist[k])
+        ax.errorbar(x=nlist, y=results_err[k,j,:], yerr=results_std[k,j,:], label=methodsNamelist[k], xlolims=True)
 
     ax.set_xlabel("n values (size of data set)")
     ax.set_ylabel('E (theta_true-theta_pred)^2')
@@ -148,3 +160,4 @@ for j in range(num_eps):
     ax.set_xscale('log')
     ax.legend()
     plt.savefig(f"plots/theta_dist_eps_{eps:.4f}_synthetic.png")
+"""
