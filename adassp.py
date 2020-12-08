@@ -44,7 +44,8 @@ def adaSSP(X,y,epsilon,delta,gamma):
     normal_mat = np.random.normal(0.0,1.0,(d,d))
 
     # I should look at the coefficients of this thing! beware scalars along diagonal
-    symmetric_normal_mat = 0.5 * (normal_mat + normal_mat.T)
+    #symmetric_normal_mat = 0.5 * (normal_mat + normal_mat.T)
+    symmetric_normal_mat = np.tril(normal_mat) + np.tril(normal_mat, -1).T
     XTX_hat = XTX + (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BX*symmetric_normal_mat
 
     # the new version of (X^TX + lambda*I)^{-1}(X^Ty)

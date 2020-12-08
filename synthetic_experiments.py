@@ -20,144 +20,331 @@ from test_recovery import test_recovery
 # I may want to set a seed early on, so I have reproducible results
 
 
-d = 10
-epslist = [0.1,1]
-#nlist= 20*2.^[1:2:18];
-nlist = [20 * (2 ** i) for i in range(1,18,2)] # smaller n go faster
+def plots_by_n():
+    d = 10
+    epslist = [0.1,1]
+    #nlist= 20*2.^[1:2:18];
+    nlist = [20 * (2 ** i) for i in range(1,16,2)] # smaller n go faster
 
-cross_val_splits = 6
-
-
-
-#methodslist = [@suffstats_perturb,@adassp, @budget_adassp_1_6, @budget_adassp_1_3,...
-    #@budget_adassp_1_2, @budget_adassp_2_3, @budget_adassp_5_6, @budget_adassp_1_100]
-methodsNamelist = ['Non-Private', 'SSP', 'Budget AdaSSP 1/3 (original)', 'Budget AdaSSP 2/3',
-'Budget AdaSSP 1/100', 'Budget AdaSSP 1/6', 'Budget AdaSSP 5/6'] #, 'Budget AdaSSP 1/6', 'Budget AdaSSP 1/3', 'Budget AdaSSP 1/2',
-#'Budget AdaSSP 2/3', 'Budget AdaSSP 5/6', 'Budget AdaSSP 1/100']
-methodslist = [linreg, SSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6]
-
-vanilla_index = methodsNamelist.index('Non-Private')
-if vanilla_index < 0:
-    print("You need the nonprivate version to compute relative efficiency!")
-    assert(False)
+    cross_val_splits = 6
 
 
 
-num_n = len(nlist)
-num_eps= len(epslist);
-num_method = len(methodsNamelist);
+    #methodslist = [@suffstats_perturb,@adassp, @budget_adassp_1_6, @budget_adassp_1_3,...
+        #@budget_adassp_1_2, @budget_adassp_2_3, @budget_adassp_5_6, @budget_adassp_1_100]
+    methodsNamelist = ['Non-Private', 'SSP', 'Budget AdaSSP 1/3 (original)', 'Budget AdaSSP 2/3',
+    'Budget AdaSSP 1/100', 'Budget AdaSSP 1/6', 'Budget AdaSSP 5/6'] #, 'Budget AdaSSP 1/6', 'Budget AdaSSP 1/3', 'Budget AdaSSP 1/2',
+    #'Budget AdaSSP 2/3', 'Budget AdaSSP 5/6', 'Budget AdaSSP 1/100']
+    methodslist = [linreg, SSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6]
 
-sigma = 1
+    vanilla_index = methodsNamelist.index('Non-Private')
+    if vanilla_index < 0:
+        print("You need the nonprivate version to compute relative efficiency!")
+        assert(False)
 
-#theta = randn(d,1);
-theta = np.random.normal(loc=0, scale=1, size=d)
-theta_norm = np.linalg.norm(theta)
-theta = theta / (theta_norm * np.sqrt(2.0))
 
-results_err = np.zeros((num_method,num_eps,num_n))
-results_std = np.zeros((num_method,num_eps,num_n))
-results_time = np.zeros((num_method,num_eps,num_n))
 
-#for i = 1:num_n
-for i in range(num_n):
-    n = nlist[i]
-    print(f"n is {n}")
+    num_n = len(nlist)
+    num_eps= len(epslist);
+    num_method = len(methodsNamelist);
 
-    #X = randn(n,d);
-    X = np.random.normal(loc=0, scale=1, size=(n,d))
+    sigma = 1
 
-    X_sqrt_sum = np.sqrt(np.sum(np.square(X), axis=1))
+    #theta = randn(d,1);
+    theta = np.random.normal(loc=0, scale=1, size=d)
+    theta_norm = np.linalg.norm(theta)
+    theta = theta / (theta_norm * np.sqrt(2.0))
 
-    #X = bsxfun(@rdivide, X,sqrt(sum(X.^2,2)));
-    #https://stackoverflow.com/questions/19602187/numpy-divide-each-row-by-a-vector-element
-    X = X / X_sqrt_sum[:,None]
-    #y = X*theta + 0.1*sigma*(rand(n,1)-0.5);
-    y = X.dot(theta) + 0.1 * sigma * (np.random.normal(loc=-0.5, scale=1, size=n))
+    results_err = np.zeros((num_method,num_eps,num_n))
+    results_std = np.zeros((num_method,num_eps,num_n))
+    results_time = np.zeros((num_method,num_eps,num_n))
 
-    #cvo = cvpartition(length(y),'KFold',10);
-    all_indices = np.arange(n)
-    cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
+    #for i = 1:num_n
+    for i in range(num_n):
+        n = nlist[i]
+        print(f"n is {n}")
 
+        #X = randn(n,d);
+        X = np.random.normal(loc=0, scale=1, size=(n,d))
+
+        X_sqrt_sum = np.sqrt(np.sum(np.square(X), axis=1))
+
+        #X = bsxfun(@rdivide, X,sqrt(sum(X.^2,2)));
+        #https://stackoverflow.com/questions/19602187/numpy-divide-each-row-by-a-vector-element
+        X = X / X_sqrt_sum[:,None]
+        #y = X*theta + 0.1*sigma*(rand(n,1)-0.5);
+        y = X.dot(theta) + 0.1 * sigma * (np.random.normal(loc=-0.5, scale=1, size=n))
+
+        #cvo = cvpartition(length(y),'KFold',10);
+        all_indices = np.arange(n)
+        cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
+
+
+        for j in range(num_eps):
+        #% set parameters of the algorithm
+            eps = epslist[j]
+            print(f"eps is {eps:.4f}")
+            #opts.eps = epslist(j);
+            #opts.delta =1/n^(1.1);
+            delta = 1 / (n ** (1.1)) # not so sure what this is about
+
+            for k in range(num_method):
+                fun = methodslist[k]
+                t = time.time()
+                errs, cvErr,cvStd = test_recovery(X, y, cvo, fun, theta, eps, delta)
+                assert(not np.isnan(cvErr))
+                #t_run=toc; # this is for timing, which I am not keeping track of
+                t_run = time.time() - t
+                print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
+                #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
+                results_err[k,j,i] = cvErr
+                results_std[k,j,i] = cvStd
+                results_time[k,j,i] = t_run
+
+
+    # maybe save('exp_gaussian.mat','results_err','results_std')
+
+    #RelEfficiency =  bsxfun(@rdivide,results_err,results_err(2,:,:));
+    # divide everything by the error for the vanilla linear regression
+
+    rel_efficiency = np.zeros((num_method, num_eps, num_n))
+    rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
+    vanilla_values = results_err[vanilla_index,:,:]
+
+
+    for i in range(num_n):
+        for j in range(num_eps):
+            for k in range(num_method):
+                rel_efficiency[k,j,i] = results_err[k,j,i] / vanilla_values[j,i]
+                rel_efficiency_std[k,j,i] = results_std[k,j,i] / vanilla_values[j,i]
+
+
+    # then for the plotting
+    # right now, it's one plot per epsilon
+    # the relative efficiency plots
 
     for j in range(num_eps):
-    #% set parameters of the algorithm
+        fig, ax = plt.subplots(1) # just one, for now
         eps = epslist[j]
-        print(f"eps is {eps:.4f}")
-        #opts.eps = epslist(j);
-        #opts.delta =1/n^(1.1);
-        delta = 1 / (n ** (1.1)) # not so sure what this is about
 
         for k in range(num_method):
-            fun = methodslist[k]
+
+            #print("yerr is ")
+            #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
+
+            ax.errorbar(x=nlist, y=rel_efficiency[k,j,:], yerr=np.concatenate(    (np.zeros((num_n, 1)), rel_efficiency_std[k,j,:].reshape((num_n,1))),    axis=1).transpose(), label=methodsNamelist[k])
+
+        ax.set_xlabel("n values (size of data set)")
+        ax.set_ylabel('Relative Efficiency')
+        ax.set_title(f"Relative Efficiency For epsilon = {eps:.2f}, Synthetic Data")
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        ax.legend()
+        plt.savefig(f"plots/rel_eff_eps_{eps:.4f}_synthetic.png")
+
+def plots_by_gamma():
+    d = 10
+    epslist = [0.01, 0.1,1]
+    #nlist= 20*2.^[1:2:18];
+    #nlist = [20 * (2 ** i) for i in range(1,16,2)] # smaller n go faster
+
+    nlist = [20 * (2 ** i) for i in [6, 10, 14, 18]] # maybe have 18... # start small
+
+    cross_val_splits = 6 # maybe crank up for real results...
+
+
+    #methodslist = [@suffstats_perturb,@adassp, @budget_adassp_1_6, @budget_adassp_1_3,...
+        #@budget_adassp_1_2, @budget_adassp_2_3, @budget_adassp_5_6, @budget_adassp_1_100]
+    #methodsNamelist = ['Non-Private', 'SSP', 'Budget AdaSSP 1/3 (original)', 'Budget AdaSSP 2/3',
+    #'Budget AdaSSP 1/100', 'Budget AdaSSP 1/6', 'Budget AdaSSP 5/6'] #, 'Budget AdaSSP 1/6', 'Budget AdaSSP 1/3', 'Budget AdaSSP 1/2',
+    #'Budget AdaSSP 2/3', 'Budget AdaSSP 5/6', 'Budget AdaSSP 1/100']
+    #methodslist = [linreg, SSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6]
+    gammas = [0.05 * i for i in range(1, 10)] + [0.01, 0.02, 0.03, 0.04] + [0.66, 0.95] + [0.1 ** i for i in range(3,6)] # vary by 0.05? Maybe, sure, why not. I may make this more finegrained later
+
+    gammas.sort()
+
+    #vanilla_index = methodsNamelist.index('Non-Private')
+    #if vanilla_index < 0:
+        #print("You need the nonprivate version to compute relative efficiency!")
+        #assert(False)
+
+    def create_budget_func(gamma):
+        def temp_func(X,y,epsilon, delta):
+            return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
+        return temp_func
+
+    methodslist = [create_budget_func(gamma) for gamma in gammas]
+    methodsNamelist = [f"Budget AdaSSP {gamma:.4f}" for gamma in gammas]
+
+
+    num_n = len(nlist)
+    num_eps = len(epslist)
+    num_method = len(methodslist)
+
+    # do the SSP algorithm on its own
+
+
+    sigma = 1
+
+    #theta = randn(d,1);
+    theta = np.random.normal(loc=0, scale=1, size=d)
+    theta_norm = np.linalg.norm(theta)
+    theta = theta / (theta_norm * np.sqrt(2.0))
+
+    non_private_results = np.zeros((num_eps, num_n))
+    SSP_results = np.zeros((num_eps, num_n))
+    SSP_std = np.zeros((num_eps, num_n))
+
+    results_err = np.zeros((num_method,num_eps,num_n))
+    results_std = np.zeros((num_method,num_eps,num_n))
+    results_time = np.zeros((num_method,num_eps,num_n))
+
+    #for i = 1:num_n
+    for i in range(num_n):
+        n = nlist[i]
+        print(f"n is {n}")
+
+        #X = randn(n,d);
+        X = np.random.normal(loc=0, scale=1, size=(n,d))
+
+        X_sqrt_sum = np.sqrt(np.sum(np.square(X), axis=1))
+
+        #X = bsxfun(@rdivide, X,sqrt(sum(X.^2,2)));
+        #https://stackoverflow.com/questions/19602187/numpy-divide-each-row-by-a-vector-element
+        X = X / X_sqrt_sum[:,None]
+        #y = X*theta + 0.1*sigma*(rand(n,1)-0.5);
+        y = X.dot(theta) + 0.1 * sigma * (np.random.normal(loc=-0.5, scale=1, size=n))
+
+        #cvo = cvpartition(length(y),'KFold',10);
+        all_indices = np.arange(n)
+        cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
+
+
+        for j in range(num_eps):
+        #% set parameters of the algorithm
+            eps = epslist[j]
+            print(f"eps is {eps:.4f}")
+            #opts.eps = epslist(j);
+            #opts.delta =1/n^(1.1);
+            delta = 1 / (n ** (1.1)) # not so sure what this is about
+
+            # have to do the linreg version
             t = time.time()
-            errs, cvErr,cvStd = test_recovery(X, y, cvo, fun, theta, eps, delta)
+            errs, cvErr,cvStd = test_recovery(X, y, cvo, linreg, theta, eps, delta)
             assert(not np.isnan(cvErr))
-            #t_run=toc; # this is for timing, which I am not keeping track of
             t_run = time.time() - t
-            print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
-            #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
-            results_err[k,j,i] = cvErr
-            results_std[k,j,i] = cvStd
-            results_time[k,j,i] = t_run
+            print(f"method = linreg, Time run was {t_run:.4f}s")
+            non_private_results[j, i] = cvErr
+
+            # may as well also track SSP
+            t = time.time()
+            errs, cvErr,cvStd = test_recovery(X, y, cvo, SSP, theta, eps, delta)
+            assert(not np.isnan(cvErr))
+            t_run = time.time() - t
+            print(f"method = SSP, Time run was {t_run:.4f}s")
+            SSP_results[j, i] = cvErr
+            SSP_std[j, i] = cvStd
+
+            # then for the rest of them
+            for k in range(num_method):
+                fun = methodslist[k]
+                t = time.time()
+                errs, cvErr,cvStd = test_recovery(X, y, cvo, fun, theta, eps, delta)
+                assert(not np.isnan(cvErr))
+                #t_run=toc; # this is for timing, which I am not keeping track of
+                t_run = time.time() - t
+                print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
+                #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
+                results_err[k,j,i] = cvErr
+                results_std[k,j,i] = cvStd
+                results_time[k,j,i] = t_run
 
 
-# maybe save('exp_gaussian.mat','results_err','results_std')
+    # maybe save('exp_gaussian.mat','results_err','results_std')
 
-#RelEfficiency =  bsxfun(@rdivide,results_err,results_err(2,:,:));
-# divide everything by the error for the vanilla linear regression
+    #RelEfficiency =  bsxfun(@rdivide,results_err,results_err(2,:,:));
+    # divide everything by the error for the vanilla linear regression
 
-rel_efficiency = np.zeros((num_method, num_eps, num_n))
-rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
-vanilla_values = results_err[vanilla_index,:,:]
+    rel_efficiency = np.zeros((num_method, num_eps, num_n))
+    rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
+
+    SSP_rel_eff = np.zeros((num_eps, num_n))
+    SSP_rel_eff_std = np.zeros((num_eps, num_n))
+    vanilla_values = non_private_results #results_err[vanilla_index,:,:]
 
 
-for i in range(num_n):
+    for i in range(num_n):
+        for j in range(num_eps):
+            for k in range(num_method):
+                rel_efficiency[k,j,i] = results_err[k,j,i] / vanilla_values[j,i]
+                rel_efficiency_std[k,j,i] = results_std[k,j,i] / vanilla_values[j,i]
+
+            SSP_rel_eff[j,i] = SSP_results[j,i] / vanilla_values[j,i]
+            SSP_rel_eff_std[j,i] = SSP_std[j,i] / vanilla_values[j,i]
+
+
+    # then for the plotting
+    # right now, it's one plot per epsilon
+    # the relative efficiency plots
+
     for j in range(num_eps):
-        for k in range(num_method):
-            rel_efficiency[k,j,i] = results_err[k,j,i] / vanilla_values[j,i]
-            rel_efficiency_std[k,j,i] = results_std[k,j,i] / vanilla_values[j,i]
+        fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
+        eps = epslist[j]
 
+        # instead of a different curve for each method, do a different curve for each n
+        #for k in range(num_method):
+        for i in range(num_n):
 
-# then for the plotting
-# right now, it's one plot per epsilon
-# the relative efficiency plots
+            #print("yerr is ")
+            #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
 
-for j in range(num_eps):
-    fig, ax = plt.subplots(1) # just one, for now
-    eps = epslist[j]
+            # plot gammas on the x-axis
+            ax.errorbar(x=gammas, y=rel_efficiency[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), rel_efficiency_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"n = {nlist[i]}")
 
-    for k in range(num_method):
+            temp_color = ax.get_lines()[2*i].get_color()#ax.get_color()
 
-        #print("yerr is ")
-        #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
+            ssp_vals = [SSP_rel_eff[j,i]] * len(gammas)
+            ssp_stds = np.array([SSP_rel_eff_std[j,i]] * len(gammas))
+            #ax.plot([0,1], [SSP_rel_eff[j,i], SSP_rel_eff[j,i]], label=f"SSP, n = {nlist[i]}", color=temp_color, linestyle="dashed")
 
-        ax.errorbar(x=nlist, y=rel_efficiency[k,j,:], yerr=np.concatenate(    (np.zeros((num_n, 1)), rel_efficiency_std[k,j,:].reshape((num_n,1))),    axis=1).transpose(), label=methodsNamelist[k])
+            ax.errorbar(x=gammas, y=ssp_vals, yerr=np.concatenate(    (np.zeros((num_method, 1)), ssp_stds.reshape((num_method,1))),    axis=1).transpose(), label=f"SSP, n = {nlist[i]}", color=temp_color, linestyle="dashed")
 
-    ax.set_xlabel("n values (size of data set)")
-    ax.set_ylabel('Relative Efficiency')
-    ax.set_title(f"Relative Effieincy For epsilon = {eps:.2f}, Synthetic Data")
-    ax.set_yscale('log')
+        ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 9], label="adaSSP gamma value")
+        #ax.set_xlabel("n values (size of data set)")
+        ax.set_xlabel("gamma values (1/3 is adaSSP)")
+        ax.set_ylabel('Relative Efficiency')
+        ax.set_title(f"Relative Efficiency For epsilon = {eps:.2f}, Synthetic Data, Testing Different Budgets")
+        ax.set_yscale('log')
+        #ax.set_xscale('log')
+        ax.legend()
+        plt.savefig(f"plots/rel_eff_by_gamma_eps_{eps:.4f}_synthetic.png")
+
+    # then I want to see how the minimum gamma argument evolves with n
+    fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
+    for j in range(num_eps):
+        eps = epslist[j]
+
+        gamma_mins = []
+        for i in range(num_n):
+            # compute the minimum relative effiei
+            rel_effs = list(rel_efficiency[:,j,i])
+            min_rel_eff = min(rel_efficiency[:,j,i])
+            gamma_min = gammas[rel_effs.index(min_rel_eff)]
+            gamma_mins.append(gamma_min)
+        ax.plot(nlist, gamma_mins, label=f"Epsilon = {eps:.4f}")
+    ax.set_xlabel("N values (size of dataset)")
+    ax.set_ylabel('Gamma value leading to smallest relative efficiency')
+    ax.set_title(f"Best gamma value vs. size of dataset")
+    #ax.set_yscale('log')
     ax.set_xscale('log')
     ax.legend()
-    plt.savefig(f"plots/rel_eff_eps_{eps:.4f}_synthetic.png")
+    plt.savefig(f"plots/best_gammas.png")
 
 
-# and if we don't divide the values
-# you should get rid of this at some point, this doesn't say much
-"""
-for j in range(num_eps):
-    fig, ax = plt.subplots(1) # just one, for now
-    eps = epslist[j]
 
-    for k in range(num_method):
 
-        ax.errorbar(x=nlist, y=results_err[k,j,:], yerr=results_std[k,j,:], label=methodsNamelist[k], xlolims=True)
 
-    ax.set_xlabel("n values (size of data set)")
-    ax.set_ylabel('E (theta_true-theta_pred)^2')
-    ax.set_title(f"E (theta_true-theta_pred)^2 for epsilon = {eps:.2f}, Synthetic Data")
-    ax.set_yscale('log')
-    ax.set_xscale('log')
-    ax.legend()
-    plt.savefig(f"plots/theta_dist_eps_{eps:.4f}_synthetic.png")
-"""
+if __name__ == "__main__":
+    #plots_by_n()
+    plots_by_gamma()
+

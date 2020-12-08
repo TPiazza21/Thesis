@@ -28,7 +28,8 @@ def SSP(X,y,epsilon,delta):
 
     # for X^TX
     normal_mat = np.random.normal(loc=0, scale=1,size=(d,d))
-    symmetric_normal_mat = 0.5 * (normal_mat + normal_mat.T)
+    #symmetric_normal_mat = 0.5 * (normal_mat + normal_mat.T)
+    symmetric_normal_mat = np.tril(normal_mat) + np.tril(normal_mat, -1).T
     XTX_hat = XTX + (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BX*symmetric_normal_mat
 
     # the new version of (X^TX)^{-1}(X^Ty)
