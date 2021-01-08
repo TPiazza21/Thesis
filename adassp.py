@@ -32,6 +32,11 @@ def adaSSP(X,y,epsilon,delta,gamma):
     lamb_min = max(lamb_min, 0.)
     lamb = max(0.0, eta - lamb_min)
 
+    zero_indicator = 0
+    if lamb == 0:
+        #print("ZERO LAMB")
+        zero_indicator = 1
+
 
     # then handle the "necessary" parts of linear regression
     logsod_necessary = np.log(2./delta_necessary)
@@ -52,7 +57,7 @@ def adaSSP(X,y,epsilon,delta,gamma):
     # you previously made a mistake where lamb was mistakenly put as lamb_min
     theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
 
-    return theta_hat
+    return theta_hat, zero_indicator # I may want to remove zero_indicator, maybe
 
 # some ready made functions to try out
 def adaSSP_1_3(X,y,epsilon, delta):

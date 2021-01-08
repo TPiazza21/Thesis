@@ -11,3 +11,15 @@ def linreg(X,y,epsilon,delta):
     theta_hat = np.linalg.inv(XTX).dot(XTy)
 
     return theta_hat
+
+def ridgereg(X,y, epsilon, delta, lamb):
+    [n,d] = X.shape
+
+    XTy = X.T.dot(y)
+    # maybe be careful about how you sometimes have lamb = 1 for the linear regression part
+    XTX = (X.T).dot(X) + lamb * np.eye(d)
+    theta_hat = np.linalg.inv(XTX).dot(XTy)
+
+    return theta_hat
+
+
