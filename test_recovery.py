@@ -1,7 +1,9 @@
 import numpy as np
+from sklearn.metrics import mean_squared_error
 
 
 # for evaluating performance
+# this will compute relative efficiency
 def test_recovery(X,y,cvo, fun_train, theta0, epsilon, delta):
     errs = []
     zero_counter = 0
@@ -30,6 +32,7 @@ def test_recovery(X,y,cvo, fun_train, theta0, epsilon, delta):
     return errs, cvErr, cvStd, error_dict
 
 # pass in d, to help with parsing the arguments of the predicted values
+# this will compute mean prediction error
 def test_prediction_error(X,y,cvo, fun_train, epsilon, delta, d):
     errs = []
     zero_counter = 0
@@ -45,7 +48,8 @@ def test_prediction_error(X,y,cvo, fun_train, epsilon, delta, d):
         # ok, now need to see what it does on test idx
         test_pred = X[testIdx,:].dot(theta_pred)
         test_true = y[testIdx]
-        err = np.square(np.linalg.norm(test_pred-test_true))
+        #err = np.square(np.linalg.norm(test_pred-test_true))
+        err = mean_squared_error(test_true, test_pred)
 
 
         errs.append(err)

@@ -10,17 +10,24 @@ import matplotlib.pyplot as plt
 # methods
 from SSP import SSP
 from linreg import linreg, ridgereg
-from adassp import adaSSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6
+from adassp import adaSSP, constSSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6
 
 from test_recovery import test_recovery, test_prediction_error
 
 import scipy.io
 
 
+# set delta globally, to be used
+delta = 10 ** (-6)
+
+
 def plots_by_gamma():
     epslist = [0.01, 0.1, 1.0]
 
-    data_name_list = ["airfoil", "autompg", "bike", "wine", "yacht"] # and "autos"? and "3droad"?
+    #data_name_list = ["airfoil", "autompg", "bike", "wine", "yacht"] # and "autos"? and "3droad"?
+    # the ones that work are ["airfoil", "autompg", "bike", "wine", "yacht"]
+    # but I only have so much space, so use these:
+    data_name_list = ["bike", "wine", "yacht"]
     #data_name_list=["3droad"]
     cross_val_splits = 6 # maybe crank up for real results...
 
@@ -43,6 +50,14 @@ def plots_by_gamma():
     methodslist = [create_budget_func(gamma) for gamma in gammas]
     methodsNamelist = [f"Budget AdaSSP {gamma:.4f}" for gamma in gammas]
 
+    def create_budget_func_const(gamma):
+        def temp_func(X,y,epsilon, delta):
+            return constSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
+        return temp_func
+
+    constMethodslist = [create_budget_func(gamma) for gamma in gammas]
+    constMethodsNamelist = [f"Budget constSSP {gamma:.4f}" for gamma in gammas]
+
 
     num_data = len(data_name_list)
     num_eps = len(epslist)
@@ -60,7 +75,10 @@ def plots_by_gamma():
 
     results_err = np.zeros((num_method,num_eps,num_data))
     results_std = np.zeros((num_method,num_eps,num_data))
-    results_time = np.zeros((num_method,num_eps,num_data))
+
+    # for the const values (the constSSP)
+    const_results_err = np.zeros((num_method,num_eps,num_data))
+    const_results_std = np.zeros((num_method,num_eps,num_data))
 
     zero_error_counts = np.zeros((num_method,num_eps,num_data))
 
@@ -101,7 +119,7 @@ def plots_by_gamma():
             eps = epslist[j]
             print(f"eps is {eps:.4f}")
 
-            delta = 1 / (n ** (1.1)) # not so sure what this is about
+            #delta = 1 / (n ** (1.1)) # not so sure what this is about
 
             # have to do the linreg version
             t = time.time()
@@ -130,9 +148,15 @@ def plots_by_gamma():
                 print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
                 results_err[k,j,i] = cvErr
                 results_std[k,j,i] = cvStd
-                results_time[k,j,i] = t_run
 
                 zero_error_counts[k,j,i] = errorDict["zero_counter"]
+
+                # and for the const stuff
+                const_fun = constMethodslist[k]
+                errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, const_fun, eps, delta, d)
+                assert(not np.isnan(cvErr))
+                const_results_err[k,j,i] = cvErr
+                const_results_std[k,j,i] = cvStd
 
 
     # plotting prediction error
@@ -147,8 +171,11 @@ def plots_by_gamma():
             #print("yerr is ")
 
             # plot gammas on the x-axis
-            ax.errorbar(x=gammas, y=results_err[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"data = {data_name_list[i]}, n={n_map[i]}, d={d_map[i]}")
-            temp_color = ax.get_lines()[2*i].get_color()#ax.get_color()
+            ax.errorbar(x=gammas, y=results_err[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"adaSSP, data = {data_name_list[i]}, n={n_map[i]}, d={d_map[i]}")
+
+            #temp_color = ax.get_lines()[2*i].get_color()#ax.get_color()
+            temp_color = ax.get_lines()[3*i].get_color()
+            ax.errorbar(x=gammas, y=const_results_err[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), const_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"constSSP, data = {data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
 
             ssp_vals = [SSP_results[j,i]] * len(gammas)
             ssp_stds = np.array([SSP_std[j,i]] * len(gammas))
@@ -159,8 +186,8 @@ def plots_by_gamma():
         ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 9], label="adaSSP gamma value")
         #ax.set_xlabel("n values (size of data set)")
         ax.set_xlabel("gamma values (1/3 is adaSSP)")
-        ax.set_ylabel('Prediction Error')
-        ax.set_title(f"Prediction Error For epsilon = {eps:.2f}, Real Data, Testing Different Budgets")
+        ax.set_ylabel('Prediction Error (MSE)')
+        ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, Real Data, Testing Different Budgets")
         ax.set_yscale('log')
         #ax.set_xscale('log')
         ax.legend()
@@ -235,7 +262,7 @@ def non_private_checks():
         all_indices = np.arange(n)
         cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
 
-        delta = 1 / (n ** (1.1)) # not so sure what this is about
+        #delta = 1 / (n ** (1.1)) # not so sure what this is about
         eps = 1.0
 
         # have to do the linreg version
@@ -282,7 +309,7 @@ def non_private_checks():
 
     #ax.set_xlabel("n values (size of data set)")
     ax.set_xlabel("Ridge Regression Lambda Parameter")
-    ax.set_ylabel('Prediction Error')
+    ax.set_ylabel('Prediction Error (MSE)')
     ax.set_title(f"Prediction Error, UCI Data, Nonprivate Methods (Ridge and Linear Regression)")
     ax.set_yscale('log')
     ax.set_xscale('log')

@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 # methods
 from SSP import SSP
 from linreg import linreg, ridgereg
-from adassp import adaSSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6
+from adassp import adaSSP, constSSP, adaSSP_1_3, adaSSP_2_3, adaSSP_1_100, adaSSP_1_6, adaSSP_5_6
 
 from test_recovery import test_recovery
 
-
+delta = 10 ** (-6) # set delta globally (used to be 1/(n^1.1), which had some issues as n grew)
 
 # I may want to set a seed early on, so I have reproducible results
 
@@ -56,7 +56,7 @@ def plots_by_n():
 
     results_err = np.zeros((num_method,num_eps,num_n))
     results_std = np.zeros((num_method,num_eps,num_n))
-    results_time = np.zeros((num_method,num_eps,num_n))
+
 
     zero_error_counts = np.zeros((num_method,num_eps,num_n))
 
@@ -87,7 +87,7 @@ def plots_by_n():
             print(f"eps is {eps:.4f}")
             #opts.eps = epslist(j);
             #opts.delta =1/n^(1.1);
-            delta = 1 / (n ** (1.1)) # not so sure what this is about
+            #delta = 1 / (n ** (1.1)) # not so sure what this is about
 
             for k in range(num_method):
                 fun = methodslist[k]
@@ -100,7 +100,6 @@ def plots_by_n():
                 #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
                 results_err[k,j,i] = cvErr
                 results_std[k,j,i] = cvStd
-                results_time[k,j,i] = t_run
 
                 zero_error_counts[k,j,i] = errorDict["zero_counter"]
 
@@ -139,11 +138,15 @@ def plots_by_n():
 
         ax.set_xlabel("n values (size of data set)")
         ax.set_ylabel('Relative Efficiency')
-        ax.set_title(f"Relative Efficiency For epsilon = {eps:.2f}, Synthetic Data")
+        ax.set_title(f"Relative Efficiency For epsilon = {eps:.3f}, Synthetic Data")
         ax.set_yscale('log')
         ax.set_xscale('log')
         ax.legend()
         plt.savefig(f"plots/rel_eff_eps_{eps:.4f}_synthetic.png")
+
+
+
+
 
 def plots_by_gamma():
     d = 10
@@ -181,6 +184,14 @@ def plots_by_gamma():
     methodsNamelist = [f"Budget AdaSSP {gamma:.4f}" for gamma in gammas]
 
 
+    def create_budget_func_const(gamma):
+        def temp_func(X,y,epsilon, delta):
+            return constSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
+        return temp_func
+
+    constMethodslist = [create_budget_func(gamma) for gamma in gammas]
+    constMethodsNamelist = [f"Budget constSSP {gamma:.4f}" for gamma in gammas]
+
     num_n = len(nlist)
     num_eps = len(epslist)
     num_method = len(methodslist)
@@ -201,7 +212,10 @@ def plots_by_gamma():
 
     results_err = np.zeros((num_method,num_eps,num_n))
     results_std = np.zeros((num_method,num_eps,num_n))
-    results_time = np.zeros((num_method,num_eps,num_n))
+
+    # for the const values (the constSSP)
+    const_results_err = np.zeros((num_method,num_eps,num_n))
+    const_results_std = np.zeros((num_method,num_eps,num_n))
 
     zero_error_counts = np.zeros((num_method,num_eps,num_n))
 
@@ -232,7 +246,7 @@ def plots_by_gamma():
             print(f"eps is {eps:.4f}")
             #opts.eps = epslist(j);
             #opts.delta =1/n^(1.1);
-            delta = 1 / (n ** (1.1)) # not so sure what this is about
+            #delta = 1 / (n ** (1.1)) # not so sure what this is about
 
             # have to do the linreg version
             t = time.time()
@@ -263,20 +277,26 @@ def plots_by_gamma():
                 #fprintf('%s at eps = %f: Test err = %.2f, std = %.2f, runtime = %.2f s.\n', methodsNamelist{k}, opts.eps, cvErr,cvStd,t_run)
                 results_err[k,j,i] = cvErr
                 results_std[k,j,i] = cvStd
-                results_time[k,j,i] = t_run
 
                 zero_error_counts[k,j,i] = errorDict["zero_counter"]
 
+                # and for the const stuff
+                const_fun = constMethodslist[k]
+                errs, cvErr,cvStd, errorDict = test_recovery(X, y, cvo, const_fun, theta, eps, delta)
+                assert(not np.isnan(cvErr))
+                const_results_err[k,j,i] = cvErr
+                const_results_std[k,j,i] = cvStd
 
-
-
-    # maybe save('exp_gaussian.mat','results_err','results_std')
 
     #RelEfficiency =  bsxfun(@rdivide,results_err,results_err(2,:,:));
     # divide everything by the error for the vanilla linear regression
 
     rel_efficiency = np.zeros((num_method, num_eps, num_n))
     rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
+
+    const_rel_efficiency = np.zeros((num_method, num_eps, num_n))
+    const_rel_efficiency_std = np.zeros((num_method, num_eps, num_n))
+
 
     SSP_rel_eff = np.zeros((num_eps, num_n))
     SSP_rel_eff_std = np.zeros((num_eps, num_n))
@@ -288,6 +308,9 @@ def plots_by_gamma():
             for k in range(num_method):
                 rel_efficiency[k,j,i] = results_err[k,j,i] / vanilla_values[j,i]
                 rel_efficiency_std[k,j,i] = results_std[k,j,i] / vanilla_values[j,i]
+
+                const_rel_efficiency[k,j,i] = const_results_err[k,j,i] / vanilla_values[j,i]
+                const_rel_efficiency_std[k,j,i] = const_results_std[k,j,i] / vanilla_values[j,i]
 
             SSP_rel_eff[j,i] = SSP_results[j,i] / vanilla_values[j,i]
             SSP_rel_eff_std[j,i] = SSP_std[j,i] / vanilla_values[j,i]
@@ -309,9 +332,13 @@ def plots_by_gamma():
             #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
 
             # plot gammas on the x-axis
-            ax.errorbar(x=gammas, y=rel_efficiency[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), rel_efficiency_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"n = {nlist[i]}")
+            ax.errorbar(x=gammas, y=rel_efficiency[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), rel_efficiency_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"adaSSP, n = {nlist[i]}")
 
-            temp_color = ax.get_lines()[2*i].get_color()#ax.get_color()
+            #temp_color = ax.get_lines()[2*i].get_color()#ax.get_color()
+            # constant is 3 - for adaSSP, for SSP, and for constSSP
+            temp_color = ax.get_lines()[3*i].get_color()#ax.get_color()
+            ax.errorbar(x=gammas, y=const_rel_efficiency[:,j,i], yerr=np.concatenate(    (np.zeros((num_method, 1)), rel_efficiency_std[:,j,i].reshape((num_method,1))),    axis=1).transpose(), label=f"constSSP, n = {nlist[i]}", color=temp_color, linestyle="dotted")
+
 
             ssp_vals = [SSP_rel_eff[j,i]] * len(gammas)
             ssp_stds = np.array([SSP_rel_eff_std[j,i]] * len(gammas))
@@ -319,11 +346,11 @@ def plots_by_gamma():
 
             ax.errorbar(x=gammas, y=ssp_vals, yerr=np.concatenate(    (np.zeros((num_method, 1)), ssp_stds.reshape((num_method,1))),    axis=1).transpose(), label=f"SSP, n = {nlist[i]}", color=temp_color, linestyle="dashed")
 
-        ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 9], label="adaSSP gamma value")
+        ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 9], label="original adaSSP gamma value")
         #ax.set_xlabel("n values (size of data set)")
-        ax.set_xlabel("gamma values (1/3 is adaSSP)")
+        ax.set_xlabel("gamma values (1/3 is original adaSSP)")
         ax.set_ylabel('Relative Efficiency')
-        ax.set_title(f"Relative Efficiency For epsilon = {eps:.2f}, Synthetic Data, Testing Different Budgets")
+        ax.set_title(f"Relative Efficiency For epsilon = {eps:.3f}, Synthetic Data, Testing Different Budgets")
         ax.set_yscale('log')
         #ax.set_xscale('log')
         ax.legend()
@@ -343,11 +370,12 @@ def plots_by_gamma():
 
             # plot gammas on the x-axis
             # I may want to investigate ways to avoid overlapping plots
-            ax.plot(gammas,list(zero_error_counts[:,j,i]), label=f"n = {nlist[i]}", alpha=0.7)
+            error_props = [val / cross_val_splits for val in list(zero_error_counts[:,j,i])]
+            ax.plot(gammas,error_props, label=f"n = {nlist[i]}", alpha=0.7)
 
         ax.set_xlabel("gamma values (1/3 is adaSSP)")
-        ax.set_ylabel('Lambda Zero Error Count')
-        ax.set_title(f"Lambda Zero Error Count For epsilon = {eps:.2f}, Synthetic Data, Testing Different Budgets")
+        ax.set_ylabel('Lambda Zero Error Proportion')
+        ax.set_title(f"Lambda Zero Error Proportion For epsilon = {eps:.3f}, Synthetic Data, Testing Different Budgets")
         #ax.set_yscale('log')
         #ax.set_xscale('log')
         ax.legend()
@@ -540,10 +568,8 @@ def non_private_checks():
 
 
 
-
-
 if __name__ == "__main__":
     #plots_by_n()
-    #plots_by_gamma()
-    non_private_checks()
+    plots_by_gamma()
+    #non_private_checks()
 
