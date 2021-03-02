@@ -17,6 +17,13 @@ from test_recovery import test_recovery
 
 delta = 10 ** (-6) # set delta globally (used to be 1/(n^1.1), which had some issues as n grew)
 
+def delta_func(n):
+    #return 10 ** (-6)
+    return n ** (-1.1)
+
+
+
+
 # I may want to set a seed early on, so I have reproducible results
 
 
@@ -145,9 +152,6 @@ def plots_by_n():
         plt.savefig(f"plots/rel_eff_eps_{eps:.4f}_synthetic.png")
 
 
-
-
-
 def plots_by_gamma():
     d = 10
     epslist = [0.001, 0.01, 0.1,1]
@@ -157,7 +161,7 @@ def plots_by_gamma():
 
     #nlist = [20 * (2 ** i) for i in [6, 10, 14, 18]] # maybe have 18... # start small
     nlist = [20 * (2 ** i) for i in [6, 10, 14]]
-    cross_val_splits = 6 # maybe crank up for real results...
+    cross_val_splits = 10 # maybe crank up for real results...
 
 
     #methodslist = [@suffstats_perturb,@adassp, @budget_adassp_1_6, @budget_adassp_1_3,...
@@ -247,6 +251,7 @@ def plots_by_gamma():
             #opts.eps = epslist(j);
             #opts.delta =1/n^(1.1);
             #delta = 1 / (n ** (1.1)) # not so sure what this is about
+            delta = delta_func(n) # either a constant or a n^{-1.1} term
 
             # have to do the linreg version
             t = time.time()
@@ -382,6 +387,7 @@ def plots_by_gamma():
         plt.savefig(f"plots/zero_count_by_gamma_eps_{eps:.4f}_synthetic.png")
 
     # then I want to see how the minimum gamma argument evolves with n
+    """
     fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
     for j in range(num_eps):
         eps = epslist[j]
@@ -401,6 +407,7 @@ def plots_by_gamma():
     ax.set_xscale('log')
     ax.legend()
     plt.savefig(f"plots/best_gammas.png")
+    """
 
 # this checks non private ridge regression
 def non_private_checks():

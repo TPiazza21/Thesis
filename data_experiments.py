@@ -20,16 +20,20 @@ import scipy.io
 # set delta globally, to be used
 delta = 10 ** (-6)
 
+def delta_func(n):
+    #return 10 ** (-6)
+    return n ** (-1.1)
+
 
 def plots_by_gamma():
-    epslist = [0.01, 0.1, 1.0]
+    epslist = [0.001, 0.01, 0.1,1]
 
     #data_name_list = ["airfoil", "autompg", "bike", "wine", "yacht"] # and "autos"? and "3droad"?
     # the ones that work are ["airfoil", "autompg", "bike", "wine", "yacht"]
     # but I only have so much space, so use these:
     data_name_list = ["bike", "wine", "yacht"]
     #data_name_list=["3droad"]
-    cross_val_splits = 6 # maybe crank up for real results...
+    cross_val_splits = 10 # maybe crank up for real results...
 
 
     gammas = [0.05 * i for i in range(1, 10)] + [0.01, 0.02, 0.03, 0.04] + [0.66, 0.95] + [0.1 ** i for i in range(3,6)] # vary by 0.05? Maybe, sure, why not. I may make this more finegrained later
@@ -183,15 +187,42 @@ def plots_by_gamma():
 
             ax.errorbar(x=gammas, y=ssp_vals, yerr=np.concatenate(    (np.zeros((num_method, 1)), ssp_stds.reshape((num_method,1))),    axis=1).transpose(), label=f"SSP, data = {data_name_list[i]}", color=temp_color, linestyle="dashed")
 
-        ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 9], label="adaSSP gamma value")
+        ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 5], label="adaSSP gamma value")
         #ax.set_xlabel("n values (size of data set)")
         ax.set_xlabel("gamma values (1/3 is adaSSP)")
         ax.set_ylabel('Prediction Error (MSE)')
-        ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, Real Data, Testing Different Budgets")
+        ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, UCI Data, Testing Different Budgets")
         ax.set_yscale('log')
         #ax.set_xscale('log')
         ax.legend()
         plt.savefig(f"plots/pred_err_by_gamma_eps_{eps:.4f}_data.png")
+
+
+
+    # for plotting errors
+    for j in range(num_eps):
+        fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
+        eps = epslist[j]
+
+        # instead of a different curve for each method, do a different curve for each n
+        #for k in range(num_method):
+        for i in range(num_data):
+
+            #print("yerr is ")
+            #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
+
+            # plot gammas on the x-axis
+            # I may want to investigate ways to avoid overlapping plots
+            error_props = [val / cross_val_splits for val in list(zero_error_counts[:,j,i])]
+            ax.plot(gammas,error_props, label=f"data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", alpha=0.7)
+
+        ax.set_xlabel("gamma values (1/3 is adaSSP)")
+        ax.set_ylabel('Lambda Zero Error Proportion')
+        ax.set_title(f"Lambda Zero Error Proportion For epsilon = {eps:.3f}, UCI Data, Testing Different Budgets")
+        #ax.set_yscale('log')
+        #ax.set_xscale('log')
+        ax.legend()
+        plt.savefig(f"plots/zero_count_by_gamma_eps_{eps:.4f}_data.png")
 
 
 # this checks non private ridge regression
@@ -263,6 +294,7 @@ def non_private_checks():
         cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
 
         #delta = 1 / (n ** (1.1)) # not so sure what this is about
+        delta = delta_func(n)
         eps = 1.0
 
         # have to do the linreg version

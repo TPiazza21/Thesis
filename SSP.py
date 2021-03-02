@@ -20,7 +20,8 @@ def SSP(X,y,epsilon,delta):
     XTX = (X.T).dot(X) + np.eye(d)
 
     # then handle the "necessary" parts of linear regression
-    logsod_necessary = np.log(2./delta_necessary)
+    # this leading factor of 2 may be new, compared to how it is written elsewhere
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
     # for X^Ty
     normal_vec = np.random.normal(loc=0, scale=1, size=d)
     normal_vec_scalar = (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BY

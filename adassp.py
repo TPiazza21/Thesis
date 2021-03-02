@@ -20,7 +20,8 @@ def adaSSP(X,y,epsilon,delta,gamma):
     delta_necessary = (1. - gamma) * delta / 2.0
     # handle the hyperparameter business (dealing with minimum eigenvalue)
 
-    logsod_hyper = np.log(2./delta_hyper)
+    # this leading factor of 2 may not have been in the original algorithm, so be careful
+    logsod_hyper = 2.0*np.log(2./delta_hyper)
     eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
     XTy = X.T.dot(y)
     # why does Wang add this identity matrix?
@@ -39,7 +40,7 @@ def adaSSP(X,y,epsilon,delta,gamma):
 
 
     # then handle the "necessary" parts of linear regression
-    logsod_necessary = np.log(2./delta_necessary)
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
     # for X^Ty
     normal_vec = np.random.normal(0.0,1.0,d)
     normal_vec_scalar = (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BY
@@ -93,7 +94,7 @@ def constSSP(X,y,epsilon,delta, gamma):
     delta_necessary = (1. - gamma) * delta / 2.0
     # handle the hyperparameter business (dealing with minimum eigenvalue)
 
-    logsod_hyper = np.log(2./delta_hyper)
+    logsod_hyper = 2.0*np.log(2./delta_hyper)
     eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
     XTy = X.T.dot(y)
     # why does Wang add this identity matrix?
@@ -115,7 +116,7 @@ def constSSP(X,y,epsilon,delta, gamma):
 
 
     # then handle the "necessary" parts of linear regression
-    logsod_necessary = np.log(2./delta_necessary)
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
     # for X^Ty
     normal_vec = np.random.normal(0.0,1.0,d)
     normal_vec_scalar = (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BY
