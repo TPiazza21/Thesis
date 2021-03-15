@@ -5,7 +5,7 @@ import numpy as np
 def SSP(X,y,epsilon,delta):
 
     BX = 1
-    BY = 1
+    BY = max(y.max(), y.min(), key=abs)#1
     varrho =0.05
     [n,d] = X.shape
 
@@ -34,6 +34,12 @@ def SSP(X,y,epsilon,delta):
     XTX_hat = XTX + (np.sqrt(logsod_necessary)/(epsilon_necessary))*BX*BX*symmetric_normal_mat
 
     # the new version of (X^TX)^{-1}(X^Ty)
-    theta_hat = np.linalg.inv(XTX_hat).dot(XTy_hat)
+    #theta_hat = np.linalg.inv(XTX_hat).dot(XTy_hat)
+    try:
+        theta_hat = np.linalg.inv(XTX_hat).dot(XTy_hat)
+    except:
+        theta_hat = 0
+        print("Failure event!")
+        assert(False)
 
     return theta_hat

@@ -49,7 +49,7 @@ def test_prediction_error(X,y,cvo, fun_train, epsilon, delta, d):
         test_pred = X[testIdx,:].dot(theta_pred)
         test_true = y[testIdx]
         #err = np.square(np.linalg.norm(test_pred-test_true))
-        err = mean_squared_error(test_true, test_pred)
+        err = mean_squared_error(test_true, test_pred)/np.var(y)# ok, it's mean squared error... should I divide by variance of y, or something?
 
 
         errs.append(err)

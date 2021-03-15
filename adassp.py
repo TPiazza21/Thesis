@@ -9,7 +9,7 @@ def adaSSP(X,y,epsilon,delta,gamma):
     """
     assert(gamma <= 1 and gamma >= 0)
     BX = 1
-    BY = 1
+    BY = max(y.max(), y.min(), key=abs)#1
     varrho =0.05
     [n,d] = X.shape
 
@@ -22,7 +22,15 @@ def adaSSP(X,y,epsilon,delta,gamma):
 
     # this leading factor of 2 may not have been in the original algorithm, so be careful
     logsod_hyper = 2.0*np.log(2./delta_hyper)
-    eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
+    #eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+
+    # the eta should roughly match the noise used in the release of X^TX
+    eta = np.sqrt(d*logsod_necessary*np.log(2*d*d/varrho))*BX*BX/(epsilon_necessary)
+
+
+
+
     XTy = X.T.dot(y)
     # why does Wang add this identity matrix?
     XTX = (X.T).dot(X) + np.eye(d)
@@ -56,7 +64,13 @@ def adaSSP(X,y,epsilon,delta,gamma):
 
     # the new version of (X^TX + lambda*I)^{-1}(X^Ty)
     # you previously made a mistake where lamb was mistakenly put as lamb_min
-    theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    #theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    try:
+        theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    except:
+        theta_hat = 0
+        print("Failure event!")
+        assert(False)
 
     return theta_hat, zero_indicator # I may want to remove zero_indicator, maybe
 
@@ -76,14 +90,16 @@ def adaSSP_1_100(X,y,epsilon, delta):
 def adaSSP_5_6(X,y,epsilon, delta):
     return adaSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=5.0/6.0)
 
-# this is identical to adaSSP, with the exception that we just use the constant for the hyperparameter, and not anything involving eigenvalue
+# this is identical to adaSSP, with the exception that we just use the constant
+# for the hyperparameter, and not anything involving eigenvalue
+# this is also constSSPbudget, in the paper
 def constSSP(X,y,epsilon,delta, gamma):
     """
     # gamma is a number in [0,1], says how much budget to put in getting the hyperparameter
     """
     assert(gamma <= 1 and gamma >= 0)
     BX = 1
-    BY = 1
+    BY = max(y.max(), y.min(), key=abs)#1
     varrho =0.05
     [n,d] = X.shape
 
@@ -95,7 +111,10 @@ def constSSP(X,y,epsilon,delta, gamma):
     # handle the hyperparameter business (dealing with minimum eigenvalue)
 
     logsod_hyper = 2.0*np.log(2./delta_hyper)
-    eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
+    #eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+    # the eta should roughly match the noise used in the release of X^TX
+    eta = np.sqrt(d*logsod_necessary*np.log(2*d*d/varrho))*BX*BX/(epsilon_necessary)
     XTy = X.T.dot(y)
     # why does Wang add this identity matrix?
     XTX = (X.T).dot(X) + np.eye(d)
@@ -132,7 +151,13 @@ def constSSP(X,y,epsilon,delta, gamma):
 
     # the new version of (X^TX + lambda*I)^{-1}(X^Ty)
     # you previously made a mistake where lamb was mistakenly put as lamb_min
-    theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    #theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    try:
+        theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    except:
+        theta_hat = 0
+        print("Failure event!")
+        assert(False)
 
     return theta_hat, zero_indicator # I may want to remove zero_indicator, maybe
 
@@ -143,7 +168,7 @@ def constSSPfull(X,y,epsilon,delta, gamma):
     """
     assert(gamma <= 1 and gamma >= 0)
     BX = 1
-    BY = 1
+    BY = max(y.max(), y.min(), key=abs)#1
     varrho =0.05
     [n,d] = X.shape
 
@@ -157,7 +182,15 @@ def constSSPfull(X,y,epsilon,delta, gamma):
     # handle the hyperparameter business (dealing with minimum eigenvalue)
 
     logsod_hyper = 2.0*np.log(2./delta_hyper)
-    eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+    logsod_necessary = 2.0*np.log(2./delta_necessary)
+    #eta = np.sqrt(d*logsod_hyper*np.log(2*d*d/varrho))*BX*BX/(epsilon_hyper)
+
+    # the eta should roughly match the noise used in the release of X^TX
+    # thus, the gamma isn't really used, because it has no bearing on anything
+    eta = np.sqrt(d*logsod_necessary*np.log(2*d*d/varrho))*BX*BX/(epsilon_necessary)
+
+
+
     XTy = X.T.dot(y)
     # why does Wang add this identity matrix?
     XTX = (X.T).dot(X) + np.eye(d)
@@ -194,7 +227,12 @@ def constSSPfull(X,y,epsilon,delta, gamma):
 
     # the new version of (X^TX + lambda*I)^{-1}(X^Ty)
     # you previously made a mistake where lamb was mistakenly put as lamb_min
-    theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    try:
+        theta_hat = np.linalg.inv(XTX_hat + lamb * np.eye(d)).dot(XTy_hat)
+    except:
+        theta_hat = 0
+        print("Failure event!")
+        assert(False)
 
     return theta_hat, zero_indicator # I may want to remove zero_indicator, maybe
 

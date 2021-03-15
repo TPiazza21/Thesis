@@ -33,14 +33,14 @@ def plots_by_gamma():
     # but I only have so much space, so use these:
     data_name_list = ["bike", "wine", "yacht"]
     #data_name_list=["3droad"]
-    cross_val_splits = 32 # maybe crank up for real results...
-
+    #cross_val_splits = 32 # maybe crank up for real results...
+    cross_val_splits = 6
 
     #gammas = [0.05 * i for i in range(1, 10)] + [0.01, 0.02, 0.03, 0.04] + [0.66, 0.95] + [0.1 ** i for i in range(3,6)] # vary by 0.05? Maybe, sure, why not. I may make this more finegrained later
-    #gammas  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8]
+    gammas  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8]
 
     #gammas = [0.01 + 0.02 * i for i in range(50)]
-    gammas = [0.05 + 0.05 * i for i in range(19)] + [0.01, 0.02, 0.03, 0.04]
+    #gammas = [0.05 + 0.05 * i for i in range(19)] + [0.01, 0.02, 0.03, 0.04]
     gammas.sort()
     print(f"using cross_val_splits of {cross_val_splits}, gammas are {gammas}")
 
@@ -58,22 +58,23 @@ def plots_by_gamma():
     methodslist = [create_budget_func(gamma) for gamma in gammas]
     methodsNamelist = [f"adaSSPbudget {gamma:.4f}" for gamma in gammas]
 
-    def create_budget_func_const(gamma):
-        def temp_func(X,y,epsilon, delta):
-            return constSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
-        return temp_func
+    #def create_budget_func_const(gamma):
+        #def temp_func(X,y,epsilon, delta):
+        #    return constSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
+        #return temp_func
 
-    constMethodslist = [create_budget_func_const(gamma) for gamma in gammas]
-    constMethodsNamelist = [f"constSSPbudget {gamma:.4f}" for gamma in gammas]
+    #constMethodslist = [create_budget_func_const(gamma) for gamma in gammas]
+    #constMethodsNamelist = [f"constSSPbudget {gamma:.4f}" for gamma in gammas]
 
-    def create_budget_func_const_full(gamma):
-        def temp_func(X,y,epsilon, delta):
-            return constSSPfull(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
-        return temp_func
+    #def create_budget_func_const_full(gamma):
+        #def temp_func(X,y,epsilon, delta):
+        #    return constSSPfull(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
+        #return temp_func
 
-    constFullMethodslist = [create_budget_func_const_full(gamma) for gamma in gammas]
-    constFullMethodsNamelist = [f"constSSPfull {gamma:.4f}" for gamma in gammas]
+    #constFullMethodslist = [create_budget_func_const_full(gamma) for gamma in gammas]
+    #constFullMethodsNamelist = [f"constSSPfull {gamma:.4f}" for gamma in gammas]
 
+    constSSPfull_func = lambda X,y,epsilon,delta: constSSPfull(X=X,y=y,epsilon=epsilon,delta=delta, gamma=0.3)#
 
     num_data = len(data_name_list)
     num_eps = len(epslist)
@@ -85,7 +86,7 @@ def plots_by_gamma():
     sigma = 1
 
 
-    non_private_results = np.zeros((num_eps, num_data))
+    #non_private_results = np.zeros((num_eps, num_data))
     SSP_results = np.zeros((num_eps, num_data))
     SSP_std = np.zeros((num_eps, num_data))
 
@@ -93,11 +94,11 @@ def plots_by_gamma():
     results_std = np.zeros((num_method,num_eps,num_data))
 
     # for the const values (the constSSP)
-    const_results_err = np.zeros((num_method,num_eps,num_data))
-    const_results_std = np.zeros((num_method,num_eps,num_data))
+    #const_results_err = np.zeros((num_method,num_eps,num_data))
+    #const_results_std = np.zeros((num_method,num_eps,num_data))
 
-    const_full_results_err = np.zeros((num_method,num_eps,num_data))
-    const_full_results_std = np.zeros((num_method,num_eps,num_data))
+    const_full_results_err = np.zeros((num_eps,num_data))
+    const_full_results_std = np.zeros((num_eps,num_data))
 
     zero_error_counts = np.zeros((num_method,num_eps,num_data))
 
@@ -140,14 +141,6 @@ def plots_by_gamma():
 
             #delta = 1 / (n ** (1.1)) # not so sure what this is about
 
-            # have to do the linreg version
-            t = time.time()
-            errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, linreg, eps, delta, d)
-            assert(not np.isnan(cvErr))
-            t_run = time.time() - t
-            print(f"method = linreg, Time run was {t_run:.4f}s")
-            non_private_results[j, i] = cvErr
-
             # may as well also track SSP
             t = time.time()
             errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, SSP, eps, delta, d)
@@ -157,12 +150,18 @@ def plots_by_gamma():
             SSP_results[j, i] = cvErr
             SSP_std[j, i] = cvStd
 
+            # constSSPfull
+            errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, constSSPfull_func, eps, delta, d)
+            assert(not np.isnan(cvErr).any())
+            const_full_results_err[j,i] = cvErr
+            const_full_results_std[j,i] = cvStd
+
             # then for the rest of them
             for k in range(num_method):
                 fun = methodslist[k]
                 t = time.time()
                 errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, fun, eps, delta, d)
-                assert(not np.isnan(cvErr))
+                assert(not np.isnan(cvErr).any())
                 t_run = time.time() - t
                 print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
                 results_err[k,j,i] = cvErr
@@ -171,24 +170,23 @@ def plots_by_gamma():
                 zero_error_counts[k,j,i] = errorDict["zero_counter"]
 
                 # and for the const stuff
-                const_fun = constMethodslist[k]
-                errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, const_fun, eps, delta, d)
-                assert(not np.isnan(cvErr))
-                const_results_err[k,j,i] = cvErr
-                const_results_std[k,j,i] = cvStd
+                #const_fun = constMethodslist[k]
+                #errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, const_fun, eps, delta, d)
+                #assert(not np.isnan(cvErr))
+                #const_results_err[k,j,i] = cvErr
+                #const_results_std[k,j,i] = cvStd
 
-                # for constSSPfull
-                const_full_fun = constFullMethodslist[k]
-                errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, const_full_fun, eps, delta, d)
-                assert(not np.isnan(cvErr))
-                const_full_results_err[k,j,i] = cvErr
-                const_full_results_std[k,j,i] = cvStd
+
 
 
     # plotting prediction error
+    fig, axs = plt.subplots(2, 2, figsize=(16,14), sharex=True, sharey=True)
+    fig.suptitle('Prediction Error (MSE), UCI Data', fontsize=20)
+    axs_raveled = list(np.ravel(axs))
     for j in range(num_eps):
-        fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
+        #fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
         eps = epslist[j]
+        ax = axs_raveled[j]
 
         # instead of a different curve for each method, do a different curve for each n
         #for k in range(num_method):
@@ -200,14 +198,19 @@ def plots_by_gamma():
             adaSSPbudget_yerr = np.concatenate(    (np.zeros((num_method, 1)), results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
             ax.errorbar(x=gammas, y=results_err[:,j,i], yerr=adaSSPbudget_yerr, label=f"adaSSPbudget, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}")
 
-            #constant set to 4 because of SSP, adaSSPbudget, constSSPbudget, constSSPfull
-            temp_color = ax.get_lines()[4*i].get_color()
+            #constant set to 4 because of SSP, adaSSPbudget, constSSPfull
+            temp_color = ax.get_lines()[3*i].get_color()
 
-            constSSPbudget_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
-            ax.errorbar(x=gammas, y=const_results_err[:,j,i], yerr=constSSPbudget_yerr, label=f"constSSPbudget, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
+            #constSSPbudget_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
+            #ax.errorbar(x=gammas, y=const_results_err[:,j,i], yerr=constSSPbudget_yerr, label=f"constSSPbudget, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
 
-            constSSPfull_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_full_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
-            ax.errorbar(x=gammas, y=const_full_results_err[:,j,i], yerr=constSSPfull_yerr, label=f"constSSPfull, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dashdot")
+            #constSSPfull_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_full_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
+            #ax.errorbar(x=gammas, y=const_full_results_err[:,j,i], yerr=constSSPfull_yerr, label=f"constSSPfull, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dashdot")
+
+            constSSPfull_vals = [const_full_results_err[j,i]] * len(gammas)
+            constSSPfull_stds = np.array([const_full_results_std[j,i]] * len(gammas))
+            constSSPfull_yerr = np.concatenate(    (np.zeros((num_method, 1)), constSSPfull_stds.reshape((num_method,1))),    axis=1).transpose()
+            ax.errorbar(x=gammas, y=constSSPfull_vals, yerr=constSSPfull_yerr, label=f"constSSPfull, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
 
 
             ssp_vals = [SSP_results[j,i]] * len(gammas)
@@ -220,13 +223,17 @@ def plots_by_gamma():
         #ax.set_xlabel("n values (size of data set)")
         ax.set_xlabel("Gamma")
         ax.set_ylabel('Prediction Error (MSE)')
-        ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, UCI Data")
+        #ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, UCI Data")
+        ax.set_title(f"epsilon = {eps:.3f}")
         ax.set_yscale('log')
         #ax.set_xscale('log')
-        ax.legend()
-        plt.savefig(f"plots/pred_err_by_gamma_eps_{eps:.4f}_data.png")
-
-
+        #ax.legend()
+        #plt.savefig(f"plots/pred_err_by_gamma_eps_{eps:.4f}_data.png")
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right')
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"plots/pred_err_by_gamma_all_eps_data.png")
+    plt.close()
 
     # for plotting errors
     for j in range(num_eps):
