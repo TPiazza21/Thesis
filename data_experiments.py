@@ -17,37 +17,30 @@ from test_recovery import test_recovery, test_prediction_error
 import scipy.io
 
 
-# set delta globally, to be used
+# set delta globally, to be used - I may also use a particular function, as needed
 delta = 10 ** (-6)
 
 def delta_func(n):
-    #return 10 ** (-6)
+    #return 10 ** (-6) # I could hardcode it
     return n ** (-1.1)
 
 
 def plots_by_gamma():
     epslist = [0.001, 0.01, 0.1,1]
 
-    #data_name_list = ["airfoil", "autompg", "bike", "wine", "yacht"] # and "autos"? and "3droad"?
+    # data_name_list = ["airfoil", "autompg", "bike", "wine", "yacht"] # and "autos"? and "3droad"?
     # the ones that work are ["airfoil", "autompg", "bike", "wine", "yacht"]
     # but I only have so much space, so use these:
     data_name_list = ["bike", "wine", "yacht"]
-    #data_name_list=["3droad"]
-    #cross_val_splits = 32 # maybe crank up for real results...
-    cross_val_splits = 6
+
+    cross_val_splits = 32
 
     #gammas = [0.05 * i for i in range(1, 10)] + [0.01, 0.02, 0.03, 0.04] + [0.66, 0.95] + [0.1 ** i for i in range(3,6)] # vary by 0.05? Maybe, sure, why not. I may make this more finegrained later
-    gammas  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8]
-
+    #gammas  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8]
     #gammas = [0.01 + 0.02 * i for i in range(50)]
-    #gammas = [0.05 + 0.05 * i for i in range(19)] + [0.01, 0.02, 0.03, 0.04]
+    gammas = [0.05 + 0.05 * i for i in range(19)] + [0.01, 0.02, 0.03, 0.04]
     gammas.sort()
     print(f"using cross_val_splits of {cross_val_splits}, gammas are {gammas}")
-
-    #vanilla_index = methodsNamelist.index('Non-Private')
-    #if vanilla_index < 0:
-        #print("You need the nonprivate version to compute relative efficiency!")
-        #assert(False)
 
 
     def create_budget_func(gamma):
@@ -58,34 +51,16 @@ def plots_by_gamma():
     methodslist = [create_budget_func(gamma) for gamma in gammas]
     methodsNamelist = [f"adaSSPbudget {gamma:.4f}" for gamma in gammas]
 
-    #def create_budget_func_const(gamma):
-        #def temp_func(X,y,epsilon, delta):
-        #    return constSSP(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
-        #return temp_func
-
-    #constMethodslist = [create_budget_func_const(gamma) for gamma in gammas]
-    #constMethodsNamelist = [f"constSSPbudget {gamma:.4f}" for gamma in gammas]
-
-    #def create_budget_func_const_full(gamma):
-        #def temp_func(X,y,epsilon, delta):
-        #    return constSSPfull(X=X,y=y,epsilon=epsilon,delta=delta, gamma=gamma)
-        #return temp_func
-
-    #constFullMethodslist = [create_budget_func_const_full(gamma) for gamma in gammas]
-    #constFullMethodsNamelist = [f"constSSPfull {gamma:.4f}" for gamma in gammas]
-
     constSSPfull_func = lambda X,y,epsilon,delta: constSSPfull(X=X,y=y,epsilon=epsilon,delta=delta, gamma=0.3)#
 
     num_data = len(data_name_list)
     num_eps = len(epslist)
     num_method = len(methodslist)
 
-    # do the SSP algorithm on its own
-
 
     sigma = 1
 
-
+    # do the SSP algorithm on its own
     #non_private_results = np.zeros((num_eps, num_data))
     SSP_results = np.zeros((num_eps, num_data))
     SSP_std = np.zeros((num_eps, num_data))
@@ -106,6 +81,7 @@ def plots_by_gamma():
     n_map = {}
 
     for i in range(num_data):
+        # extract and parse data
         data_name = data_name_list[i]
         print("data is " + data_name)
         all_data = scipy.io.loadmat('data/data_uci/' + data_name + '/' + data_name + '.mat')['data']
@@ -119,27 +95,20 @@ def plots_by_gamma():
         X = all_data[:,:d]
         y = all_data[:,-1]
 
-        X = X - X.mean() # do I get mean for free?
+        X = X - X.mean()
         y = y - y.mean()
         y = y / y.std()
 
         X_sqrt_sum = np.sqrt(np.sum(np.square(X), axis=1))
         X = X / X_sqrt_sum[:,None]
 
-
-
-        #cvo = cvpartition(length(y),'KFold',10);
         all_indices = np.arange(n)
-        cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)] #, random_state=0) # I could put random state here, if I wanted
-
-
+        cvo = [splits for splits in ShuffleSplit(n_splits=cross_val_splits, test_size=0.1).split(all_indices)]
 
         for j in range(num_eps):
         #% set parameters of the algorithm
             eps = epslist[j]
             print(f"eps is {eps:.4f}")
-
-            #delta = 1 / (n ** (1.1)) # not so sure what this is about
 
             # may as well also track SSP
             t = time.time()
@@ -166,71 +135,43 @@ def plots_by_gamma():
                 print(f"method = {methodsNamelist[k]}, Time run was {t_run:.4f}s")
                 results_err[k,j,i] = cvErr
                 results_std[k,j,i] = cvStd
-
+                # the "lambda zero proportion" from the thesis
                 zero_error_counts[k,j,i] = errorDict["zero_counter"]
-
-                # and for the const stuff
-                #const_fun = constMethodslist[k]
-                #errs, cvErr,cvStd, errorDict = test_prediction_error(X, y, cvo, const_fun, eps, delta, d)
-                #assert(not np.isnan(cvErr))
-                #const_results_err[k,j,i] = cvErr
-                #const_results_std[k,j,i] = cvStd
-
-
-
 
     # plotting prediction error
     fig, axs = plt.subplots(2, 2, figsize=(16,14), sharex=True, sharey=True)
     fig.suptitle('Prediction Error (MSE), UCI Data', fontsize=20)
     axs_raveled = list(np.ravel(axs))
     for j in range(num_eps):
-        #fig, ax = plt.subplots(1, figsize=(9,6)) # just one, for now
         eps = epslist[j]
         ax = axs_raveled[j]
 
         # instead of a different curve for each method, do a different curve for each n
-        #for k in range(num_method):
         for i in range(num_data):
-
-            #print("yerr is ")
-
             # plot gammas on the x-axis
             adaSSPbudget_yerr = np.concatenate(    (np.zeros((num_method, 1)), results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
             ax.errorbar(x=gammas, y=results_err[:,j,i], yerr=adaSSPbudget_yerr, label=f"adaSSPbudget, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}")
 
-            #constant set to 4 because of SSP, adaSSPbudget, constSSPfull
+            #constant set to 3 because of SSP, adaSSPbudget, constSSPfull
             temp_color = ax.get_lines()[3*i].get_color()
-
-            #constSSPbudget_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
-            #ax.errorbar(x=gammas, y=const_results_err[:,j,i], yerr=constSSPbudget_yerr, label=f"constSSPbudget, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
-
-            #constSSPfull_yerr = np.concatenate(    (np.zeros((num_method, 1)), const_full_results_std[:,j,i].reshape((num_method,1))),    axis=1).transpose()
-            #ax.errorbar(x=gammas, y=const_full_results_err[:,j,i], yerr=constSSPfull_yerr, label=f"constSSPfull, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dashdot")
 
             constSSPfull_vals = [const_full_results_err[j,i]] * len(gammas)
             constSSPfull_stds = np.array([const_full_results_std[j,i]] * len(gammas))
             constSSPfull_yerr = np.concatenate(    (np.zeros((num_method, 1)), constSSPfull_stds.reshape((num_method,1))),    axis=1).transpose()
             ax.errorbar(x=gammas, y=constSSPfull_vals, yerr=constSSPfull_yerr, label=f"constSSPfull, data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", color=temp_color, linestyle="dotted")
 
-
             ssp_vals = [SSP_results[j,i]] * len(gammas)
             ssp_stds = np.array([SSP_std[j,i]] * len(gammas))
-            #ax.plot([0,1], [SSP_rel_eff[j,i], SSP_rel_eff[j,i]], label=f"SSP, n = {nlist[i]}", color=temp_color, linestyle="dashed")
-
             ax.errorbar(x=gammas, y=ssp_vals, yerr=np.concatenate(    (np.zeros((num_method, 1)), ssp_stds.reshape((num_method,1))),    axis=1).transpose(), label=f"SSP, data = {data_name_list[i]}", color=temp_color, linestyle="dashed")
 
         ax.plot([1.0/3.0, 1.0/3.0], [0, 10** 5], label="adaSSP gamma value")
-        #ax.set_xlabel("n values (size of data set)")
         ax.set_xlabel("Gamma")
         ax.set_ylabel('Prediction Error (MSE)')
-        #ax.set_title(f"Prediction Error For epsilon = {eps:.3f}, UCI Data")
         ax.set_title(f"epsilon = {eps:.3f}")
         ax.set_yscale('log')
-        #ax.set_xscale('log')
-        #ax.legend()
-        #plt.savefig(f"plots/pred_err_by_gamma_eps_{eps:.4f}_data.png")
+
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper right')
+    fig.legend(handles, labels, loc='center')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/pred_err_by_gamma_all_eps_data.png")
     plt.close()
@@ -241,26 +182,18 @@ def plots_by_gamma():
         eps = epslist[j]
 
         # instead of a different curve for each method, do a different curve for each n
-        #for k in range(num_method):
         for i in range(num_data):
-
-            #print("yerr is ")
-            #print(np.concatenate(    (rel_efficiency_std[k,j,:].reshape((num_n,1)), np.zeros((num_n, 1))),    axis=1).reshape((2, num_n)))
-
             # plot gammas on the x-axis
-            # I may want to investigate ways to avoid overlapping plots
             error_props = [val / cross_val_splits for val in list(zero_error_counts[:,j,i])]
             ax.plot(gammas,error_props, label=f"data={data_name_list[i]}, n={n_map[i]}, d={d_map[i]}", alpha=0.7)
 
         ax.set_xlabel("Gamma")
         ax.set_ylabel('Lambda Zero Proportion (for adaSSPbudget)')
         ax.set_title(f"Lambda Zero Proportion For epsilon = {eps:.3f}, UCI Data")
-        #ax.set_yscale('log')
-        #ax.set_xscale('log')
         ax.legend()
         plt.savefig(f"plots/zero_count_by_gamma_eps_{eps:.4f}_data.png")
 
-
+"""
 # this checks non private ridge regression
 def non_private_checks():
 
@@ -383,7 +316,7 @@ def non_private_checks():
     ax.set_xscale('log')
     ax.legend()
     plt.savefig(f"plots/pred_err_nonprivate_data.png")
-
+"""
 
 if __name__ == "__main__":
     plots_by_gamma()
